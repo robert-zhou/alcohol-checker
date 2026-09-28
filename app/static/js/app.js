@@ -1,5 +1,5 @@
 import { initialJson, state } from "/static/js/state.js";
-import { hydrateBatchJobFromUrl, pollBatchJob, readJsonResponse } from "/static/js/services.js";
+import { flagUnauthorizedIfNeeded, hydrateBatchJobFromUrl, loadAuthStatus, pollBatchJob, readJsonResponse } from "/static/js/services.js";
 import { renderApp } from "/static/js/view.js";
 import { getFullPath, safeRevoke } from "/static/js/utils.js";
 
@@ -84,7 +84,10 @@ async function submitBatchJob() {
 
     const response = await fetch("/api/batch", { method: "POST", body: formData });
     const data = await readJsonResponse(response);
-    if (!response.ok || data.error) throw new Error(data.detail || data.error || "Batch job failed");
+    if (!response.ok || data.error) {
+      flagUnauthorizedIfNeeded(response);
+      throw new Error(data.detail || data.error || "Batch job failed");
+    }
 
     state.batchJobId = data.job_id;
     state.batchStatus = data.status;
@@ -130,6 +133,7 @@ async function verifyCase() {
     const data = await readJsonResponse(response);
 
     if (!response.ok || data.error) {
+      flagUnauthorizedIfNeeded(response);
       throw new Error(data.detail || data.error || "Verification failed");
     }
 
@@ -173,7 +177,10 @@ async function saveOverride() {
   try {
     const response = await fetch(`/api/results/${resultId}/review`, { method: "POST", body: formData });
     const data = await readJsonResponse(response);
-    if (!response.ok || data.error) throw new Error(data.detail || data.error || "Override save failed");
+    if (!response.ok || data.error) {
+      flagUnauthorizedIfNeeded(response);
+      throw new Error(data.detail || data.error || "Override save failed");
+    }
     state.result = data;
     state.status = { type: "success", message: `Manual override saved for ${fieldName}.` };
   } catch (error) {
@@ -181,6 +188,54 @@ async function saveOverride() {
   } finally {
     render();
   }
+}
+
+async function loginUser() {
+  const usernameInput = document.getElementById("loginUsername");
+  const passwordInput = document.getElementById("loginPassword");
+  const username = usernameInput ? usernameInput.value : "";
+  const password = passwordInput ? passwordInput.value : "";
+
+  if (!username.trim() || !password) {
+    state.loginError = "Enter both a username and password.";
+    render();
+    return;
+  }
+
+  state.loginLoading = true;
+  state.loginError = "";
+  render();
+
+  try {
+    const formData = new FormData();
+    formData.append("username", username);
+    formData.append("password", password);
+    const response = await fetch("/api/login", { method: "POST", body: formData });
+    const data = await readJsonResponse(response);
+    if (!response.ok || data.error) {
+      throw new Error(data.detail || data.error || "Login failed.");
+    }
+    state.auth.authenticated = true;
+    state.auth.user = data.user || null;
+    state.loginError = "";
+  } catch (error) {
+    state.loginError = error.message || "Login failed.";
+  } finally {
+    state.loginLoading = false;
+    render();
+  }
+}
+
+async function logoutUser() {
+  try {
+    await fetch("/api/logout", { method: "POST" });
+  } catch {
+    // Ignore network errors on logout; clear local auth state regardless.
+  }
+  state.auth.authenticated = false;
+  state.auth.user = null;
+  clearStateAndUrls();
+  render();
 }
 
 function handleChange(event) {
@@ -268,6 +323,18 @@ function handleChange(event) {
 }
 
 async function handleClick(event) {
+  const loginButton = event.target.closest("#loginSubmitButton");
+  if (loginButton) {
+    await loginUser();
+    return;
+  }
+
+  const logoutButton = event.target.closest("#logoutButton");
+  if (logoutButton) {
+    await logoutUser();
+    return;
+  }
+
   const navButton = event.target.closest(".nav-button");
   if (navButton) {
     state.activeTab = navButton.dataset.tab;
@@ -366,6 +433,19 @@ document.addEventListener("change", handleChange);
 document.addEventListener("click", (event) => {
   void handleClick(event);
 });
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.id === "loginUsername" || target.id === "loginPassword") {
+    event.preventDefault();
+    void loginUser();
+  }
+});
 
 render();
 void hydrateBatchJobFromUrl(render);
+void (async function bootstrapAuth() {
+  await loadAuthStatus();
+  render();
+})();

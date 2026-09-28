@@ -65,6 +65,68 @@ h1 {
   text-transform: uppercase;
 }
 
+.hero-auth {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero-auth-user {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.login-shell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: 32px;
+  text-align: center;
+}
+
+.login-card .subtitle {
+  margin-bottom: 20px;
+}
+
+.login-field {
+  text-align: left;
+  margin-bottom: 14px;
+}
+
+.login-field label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.login-field input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background: #fbfcff;
+  color: var(--text);
+}
+
+#loginSubmitButton {
+  width: 100%;
+  margin-top: 6px;
+}
+
 .stack {
   display: grid;
   grid-template-columns: 1.05fr 1.45fr;

@@ -7,3 +7,4 @@ opencv-python-headless==4.8.1.78
 pypdf==6.19.0
 mysql-connector-python==9.4.0
 openai==3.19.2
+itsdangerous==2.2.0

@@ -121,20 +121,9 @@ class LLMClient:
                     "properties": {
                         "value": {"type": ["string", "null"]},
                         "confidence": {"type": "number"},
-                        "attributes": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "case_exact": {"type": "number"},
-                                "bold_hint": {"type": "number"},
-                                "legibility": {"type": "number"},
-                                "tiny_text": {"type": "number"},
-                            },
-                            "required": ["case_exact", "bold_hint", "legibility", "tiny_text"],
-                        },
-                        "notes": {"type": "string"},
+                        "notes": {"type": "string", "maxLength": 80},
                     },
-                    "required": ["value", "confidence", "attributes", "notes"],
+                    "required": ["value", "confidence", "notes"],
                 },
                 "warning_result": {
                     "type": "object",
@@ -148,12 +137,10 @@ class LLMClient:
                             "properties": {
                                 "case_exact": {"type": "number"},
                                 "bold_hint": {"type": "number"},
-                                "legibility": {"type": "number"},
-                                "tiny_text": {"type": "number"},
                             },
-                            "required": ["case_exact", "bold_hint", "legibility", "tiny_text"],
+                            "required": ["case_exact", "bold_hint"],
                         },
-                        "notes": {"type": "string"},
+                        "notes": {"type": "string", "maxLength": 80},
                     },
                     "required": ["value", "confidence", "attributes", "notes"],
                 },
@@ -277,14 +264,15 @@ class LLMClient:
             "Inspect the uploaded alcohol label image directly. "
             "Return ONLY one valid JSON object, with no markdown, no code fences, and no extra commentary. "
             "No extra top-level keys or nested keys beyond the required schema are allowed. "
-            "Use this exact top-level schema: {\"field_analysis\":{\"brand\":{\"value\":string|null,\"confidence\":number,\"attributes\":{...},\"notes\":string},\"class\":{\"value\":string|null,\"confidence\":number,\"attributes\":{...},\"notes\":string},\"abv\":{\"value\":string|null,\"confidence\":number,\"attributes\":{...},\"notes\":string},\"net_contents\":{\"value\":string|null,\"confidence\":number,\"attributes\":{...},\"notes\":string},\"producer_name\":{\"value\":string|null,\"confidence\":number,\"attributes\":{...},\"notes\":string},\"country_of_origin\":{\"value\":string|null,\"confidence\":number,\"attributes\":{...},\"notes\":string},\"government_warning\":{\"value\":string|null,\"confidence\":number,\"attributes\":{\"case_exact\":number,\"bold_hint\":number,\"legibility\":number,\"tiny_text\":number},\"notes\":string}},\"government_warning_summary\":{\"exact\":boolean,\"reason\":string}}. "
-            "Each field must contain only: value, confidence, attributes, and notes. "
-            "attributes should only include the smallest set of values needed for the field. "
+            "Use this exact top-level schema: {\"field_analysis\":{\"brand\":{\"value\":string|null,\"confidence\":number,\"notes\":string},\"class\":{\"value\":string|null,\"confidence\":number,\"notes\":string},\"abv\":{\"value\":string|null,\"confidence\":number,\"notes\":string},\"net_contents\":{\"value\":string|null,\"confidence\":number,\"notes\":string},\"producer_name\":{\"value\":string|null,\"confidence\":number,\"notes\":string},\"country_of_origin\":{\"value\":string|null,\"confidence\":number,\"notes\":string},\"government_warning\":{\"value\":string|null,\"confidence\":number,\"attributes\":{\"case_exact\":number,\"bold_hint\":number},\"notes\":string}},\"government_warning_summary\":{\"exact\":boolean,\"reason\":string}}. "
+            "Each field must contain only: value, confidence, and notes. Do not include an attributes object for brand, class, abv, net_contents, producer_name, or country_of_origin. "
+            "For government_warning only, also include an attributes object with exactly case_exact and bold_hint (0-1 scores); this is the one compliance-critical field that needs those signals. "
+            "Keep every notes value extremely short: at most 12 words or 80 characters, a single terse phrase, no full sentences. "
             "Government warning must be treated as an exact compliance field. "
             "For government_warning, value should capture the exact warning text if visible, confidence should reflect whether the warning is fully readable, and attributes should include case_exact and bold_hint. "
             "If the image is skewed, blurry, shadowed, has glare, or the text is tiny, mentally rectify it before reading. "
             "The required statement must begin with GOVERNMENT WARNING: in all caps and bold. "
-            "If the wording differs, the casing differs, the text is not bold, the font is too small, or the warning is buried in the label, mark government_warning_summary.exact as false and explain why in the reason field. "
+            "If the wording differs, the casing differs, the text is not bold, the font is too small, or the warning is buried in the label, mark government_warning_summary.exact as false and explain why in the reason field (also keep this reason brief, under 25 words). "
             "Do not invent values. If a field cannot be read confidently, set value to null and reduce confidence. "
             "Use a compact JSON object only; no additional metadata, no debug arrays, no summaries beyond government_warning_summary."
         )
@@ -587,8 +575,22 @@ class LLMClient:
                     }],
                     "max_output_tokens": max_output_tokens,
                 }
-                response = client.responses.create(**request_kwargs)
-                content = self._extract_response_text(response)
+                if stream_enabled:
+                    try:
+                        stream = client.responses.create(**request_kwargs, stream=True)
+                        content, first_token_seconds = self._collect_stream_output_text(stream)
+                        timings["first_token_seconds"] = first_token_seconds
+                        used_streaming = True
+                        if not content or not content.strip():
+                            raise ValueError("empty streaming response")
+                        self._parse_completion_json(content)
+                    except Exception:
+                        response = client.responses.create(**request_kwargs)
+                        content = self._extract_response_text(response)
+                        used_streaming = False
+                else:
+                    response = client.responses.create(**request_kwargs)
+                    content = self._extract_response_text(response)
             else:
                 request_kwargs = {
                     "model": model,
@@ -684,8 +686,22 @@ class LLMClient:
                     }],
                     "max_output_tokens": max_output_tokens,
                 }
-                response = client.responses.create(**request_kwargs)
-                content = self._extract_response_text(response)
+                if stream_enabled:
+                    try:
+                        stream = client.responses.create(**request_kwargs, stream=True)
+                        content, first_token_seconds = self._collect_stream_output_text(stream)
+                        timings["first_token_seconds"] = first_token_seconds
+                        used_streaming = True
+                        if not content or not content.strip():
+                            raise ValueError("empty streaming response")
+                        self._parse_completion_json(content)
+                    except Exception:
+                        response = client.responses.create(**request_kwargs)
+                        content = self._extract_response_text(response)
+                        used_streaming = False
+                else:
+                    response = client.responses.create(**request_kwargs)
+                    content = self._extract_response_text(response)
             else:
                 request_kwargs = {
                     "model": model,

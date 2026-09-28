@@ -27,6 +27,29 @@ export async function readJsonResponse(response) {
   throw new Error(trimmed.slice(0, 200) || "The server returned an unexpected response.");
 }
 
+export async function loadAuthStatus() {
+  try {
+    const response = await fetch("/api/session");
+    const data = await readJsonResponse(response);
+    state.auth.required = Boolean(data.auth_required);
+    state.auth.authenticated = Boolean(data.authenticated);
+    state.auth.user = data.user || null;
+  } catch {
+    // If the session check itself fails, fail open only when auth isn't required elsewhere.
+    state.auth.required = false;
+    state.auth.authenticated = true;
+  } finally {
+    state.auth.checked = true;
+  }
+}
+
+export function flagUnauthorizedIfNeeded(response) {
+  if (response.status === 401 && state.auth.required) {
+    state.auth.authenticated = false;
+  }
+}
+
+
 export async function pollBatchJob(jobId, runToken, render) {
   try {
     const response = await fetch(`/api/jobs/${jobId}`);

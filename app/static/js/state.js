@@ -31,4 +31,12 @@ export const state = {
   status: { type: "idle", message: "Ready to verify a label." },
   result: null,
   overrideModal: null,
+  auth: {
+    checked: false,
+    required: false,
+    authenticated: true,
+    user: null,
+  },
+  loginLoading: false,
+  loginError: "",
 };

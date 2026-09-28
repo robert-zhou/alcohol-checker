@@ -309,7 +309,44 @@ function renderBatchResults() {
   `;
 }
 
+function renderLoginScreen() {
+  return `
+    <div class="page">
+      <div class="login-shell">
+        <div class="login-card">
+          <div class="pill">Label audit</div>
+          <h1>Alcohol Label Verification</h1>
+          <p class="subtitle">Sign in with your authorized credentials to access this service.</p>
+
+          ${state.loginError ? `<div class="status error">${escapeHtml(state.loginError)}</div>` : ""}
+
+          <div class="login-field">
+            <label for="loginUsername">Username</label>
+            <input id="loginUsername" type="text" autocomplete="username" ${state.loginLoading ? "disabled" : ""} />
+          </div>
+          <div class="login-field">
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" ${state.loginLoading ? "disabled" : ""} />
+          </div>
+
+          <button type="button" id="loginSubmitButton" ${state.loginLoading ? "disabled" : ""}>
+            ${state.loginLoading ? "Signing in..." : "Sign in"}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export function renderApp() {
+  if (!state.auth.checked) {
+    return `<div class="page"></div>`;
+  }
+
+  if (state.auth.required && !state.auth.authenticated) {
+    return renderLoginScreen();
+  }
+
   const isSingle = state.activeTab === "single";
 
   return `
@@ -320,6 +357,12 @@ export function renderApp() {
           <h1>Alcohol Label Verification</h1>
           <p class="subtitle">Compare uploaded label images against the application record and review mismatches quickly.</p>
         </div>
+        ${state.auth.required ? `
+          <div class="hero-auth">
+            <span class="hero-auth-user">${state.auth.user ? `Signed in as ${escapeHtml(state.auth.user)}` : ""}</span>
+            <button type="button" id="logoutButton" class="secondary">Sign out</button>
+          </div>
+        ` : ""}
       </div>
 
       <div class="workspace-shell">

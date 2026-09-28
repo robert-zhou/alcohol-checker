@@ -50,3 +50,24 @@ DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "alcuser")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "alcpass")
 DB_NAME = os.getenv("DB_NAME", "alcohol_label_verification")
+
+# Rate limiting for LLM-backed endpoints (per client IP). Set to 0 to disable a given limit.
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "5"))
+RATE_LIMIT_PER_DAY = int(os.getenv("RATE_LIMIT_PER_DAY", "50"))
+
+# Optional shared API key required for LLM-backed endpoints. Empty disables the check.
+API_KEY = os.getenv("API_KEY", "")
+
+# Simple username/password login gate for the whole service. Both must be set to
+# require login; if either is empty, login is disabled (open access).
+AUTH_USERNAME = os.getenv("AUTH_USERNAME", "")
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")
+
+# Secret used to sign session cookies. Set this explicitly in production so sessions
+# survive process restarts; if left empty, a random key is generated at startup
+# (existing sessions will be invalidated whenever the process restarts).
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+
+# Set to "1" when serving over HTTPS so the session cookie is marked Secure.
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "0").strip().lower() in {"1", "true", "yes", "on"}
+
