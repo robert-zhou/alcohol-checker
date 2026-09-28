@@ -1,0 +1,24 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+instance/
+.DS_Store
+env/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Tests and test data
+tests/
+sample_cases/
+data/
+.pytest_cache/
+
+# Scratch/debug scripts
+tmp_*.py
+
+# Editor/tooling
+.vscode/
