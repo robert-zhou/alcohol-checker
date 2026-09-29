@@ -1,0 +1,14 @@
+{
+  "application_to_label": {
+    "application_APP_1001.pdf": "label_APP_1001.png",
+    "application_APP_1002.pdf": "label_APP_1002.png",
+    "application_APP_1003.pdf": "label_APP_1003.png",
+    "application_APP_1004.pdf": "label_APP_1004.png",
+    "application_APP_1005.pdf": "label_APP_1005.png",
+    "application_APP_1006.pdf": "label_APP_1006.png",
+    "application_APP_1007.pdf": "label_APP_1007.png",
+    "application_APP_1008.pdf": "label_APP_1008.png",
+    "application_APP_1009.pdf": "label_APP_1009.png",
+    "application_APP_1010.pdf": "label_APP_1010.png"
+  }
+}
