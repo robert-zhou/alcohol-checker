@@ -4,6 +4,17 @@ This walks through the two main workflows: verifying a single application/label 
 running a batch of many pairs at once. See [README.md](README.md) for setup/run instructions and
 [APPROACH.md](APPROACH.md) for the reasoning behind the design.
 
+## Logging in
+
+If the login gate is enabled (see
+[APPROACH.md](APPROACH.md#why-a-login-gate-and-rate-limiter-even-for-a-prototype)), you'll be
+asked for a username and password before you can reach the app. Ask whoever runs your deployment
+for credentials — for the live demo deployment, that's
+[robertzhongzhou@gmail.com](mailto:robertzhongzhou@gmail.com). If the login gate isn't enabled for
+your deployment, you'll land directly on the Single Case tab below.
+
+![Login screen](screenshots/login.png)
+
 ## What you need before you start
 
 Each case needs exactly **one application record and one label photo**:
