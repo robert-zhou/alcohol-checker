@@ -203,3 +203,52 @@ Each case is assumed to be **one application record paired with one label photo*
 - **Single-instance scale.** Rate limiting and batch-job state are kept in-process (in memory),
   which is sufficient for one app instance but would need externalizing (e.g., shared cache) if
   scaled to multiple instances later.
+
+## Future work
+
+Comparing the current implementation against the discovery-note requirements surfaces a few gaps
+that are reasonable to defer for a prototype but should be addressed before any wider rollout:
+
+- **Multi-photo labels (front + back).** Jenny noted some labels split required fields across
+  front and back images; today the app only accepts one photo per case, so a label that needs two
+  shots to cover all seven fields isn't fully supported. Adding multi-image upload per case, with
+  the vision-LLM call reading both images together, would close this gap.
+- **Image preprocessing for poor-quality photos.** Off-angle shots and glare are currently handled
+  only as well as the vision model handles them natively — there's no deskew/glare-correction
+  step. A dedicated preprocessing pass (or a "retake photo" quality check before submission) would
+  make the tool more robust for agents photographing labels in the field, not just clean sample
+  images.
+- **COLA integration.** The prototype deliberately takes application data as a standalone
+  upload rather than pulling it from COLA (per Marcus's explicit scope boundary). If this
+  prototype informs a real procurement decision, integrating directly with COLA to fetch
+  application data (instead of requiring a separate PDF/JSON upload) would remove a manual step
+  agents currently have to do themselves.
+- **Production-grade secrets management.** Secrets currently live in App Service application
+  settings rather than a dedicated vault (e.g., Azure Key Vault). This was an explicit
+  prototype-scope tradeoff since no PII/sensitive data is involved yet, but a production rollout
+  should move secrets into Key Vault with managed-identity access, consistent with how the rest
+  of this deployment already uses managed identity for ACR.
+- **TTB-managed authentication instead of a shared login/password.** The current login gate is a
+  single shared username/password pair, adequate for a prototype but not for per-agent
+  accountability. A production version should integrate with TTB's existing identity provider
+  (Azure AD, given TTB's infrastructure is already on Azure) so overrides and audit entries are
+  tied to an individual agent's identity rather than a shared credential.
+- **Multi-instance / horizontal scaling.** Rate-limiter state and batch-job state are in-process
+  only. Scaling beyond a single App Service instance would require externalizing this state (e.g.,
+  Redis or a shared table) so limits and job status stay consistent across instances.
+- **Beverage-type-specific validation rules.** Only the common cross-category fields are checked
+  today; category-specific exceptions (e.g., ABV disclosure exemptions for certain wine/beer
+  categories) are out of scope and would need dedicated rule sets per beverage type.
+- **Broader government-warning wording coverage.** The exact-match check assumes the current
+  standard federal warning text; it doesn't enumerate historically approved alternate wordings,
+  which would need to be added if those are still in active use.
+- **Confirming outbound network access with IT.** The earlier scanning-vendor pilot failed partly
+  because outbound traffic to an ML vendor endpoint was blocked. This prototype assumes the
+  vision-model endpoint's domain can be allowlisted, but that hasn't been confirmed with IT — this
+  should happen before any production deployment.
+- **Larger, more representative test corpus.** Current fixtures cover a handful of
+  synthetic/sample cases rather than the full variety of real label formats and edge cases TTB
+  agents see; expanding this would increase confidence ahead of a wider rollout.
+- **CI/CD pipeline.** Builds and deploys are currently run manually via the Azure CLI steps in
+  [README.md](README.md). A GitHub Actions workflow to build, test, and deploy on merge would
+  reduce manual deployment risk and make the process easier to hand off.
