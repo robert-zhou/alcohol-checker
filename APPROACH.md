@@ -19,19 +19,21 @@ edge cases rather than blind rejection.
 
 ## Approach
 
-- **Vision LLM extraction instead of OCR + regex.** An earlier iteration of this prototype used a
-  traditional Tesseract-OCR + regex pipeline (`pytesseract`/`opencv-python-headless`, since removed
-  from [requirements.txt](requirements.txt)) to read label text and extract fields. It didn't hold
-  up well in practice — OCR accuracy degraded sharply on anything less than a perfectly flat, well
-  lit label photo, and hand-written regexes for field extraction were brittle against the kind of
-  formatting variation (line breaks, spacing, font choices) real label photos have. That pipeline
-  was replaced with a single call to a vision-capable LLM
-  ([app/integrations/llm.py](app/integrations/llm.py)) that reads the label image directly and
+- **Vision LLM extraction instead of OCR + regex.** The original plan for this prototype was a
+  local Tesseract-OCR + regex pipeline (`pytesseract`/`opencv-python-headless`, since removed from
+  [requirements.txt](requirements.txt)) as the primary extraction path, with a vision-LLM call as a
+  fallback for labels the local OCR handled poorly. In practice, local OCR accuracy degraded
+  sharply on anything less than a perfectly flat, well-lit label photo, and hand-written regexes
+  for field extraction were brittle against the kind of formatting variation (line breaks,
+  spacing, font choices) real label photos have — so the "fallback" path ended up being needed for
+  most real-world images, not just edge cases. Given that, the local OCR step was dropped
+  entirely in favor of always using the vision-capable LLM
+  ([app/integrations/llm.py](app/integrations/llm.py)), which reads the label image directly and
   returns structured JSON for each required field, plus a small set of visual attributes
-  (case-exactness and boldness for the government warning). This avoids building and tuning a
-  traditional OCR/parsing pipeline, and keeps typical end-to-end latency to roughly 4-6 seconds per
-  label — well under the "5 seconds or agents won't use it" bar Sarah described, and far below the
-  30-40s scanning-vendor pilot that failed.
+  (case-exactness and boldness for the government warning). This avoids maintaining two parallel
+  extraction paths, and keeps typical end-to-end latency to roughly 4-6 seconds per label — well
+  under the "5 seconds or agents won't use it" bar Sarah described, and far below the 30-40s
+  scanning-vendor pilot that failed.
 - **Structured, size-bounded output.** The extraction schema is intentionally narrow — only the
   fields actually used in comparisons, with a length cap on free-text notes. This keeps prompts
   and responses small (faster, cheaper) rather than asking the model for an exhaustive attribute
