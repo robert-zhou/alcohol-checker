@@ -19,15 +19,12 @@ edge cases rather than blind rejection.
 
 ## Approach
 
-- **Vision LLM extraction instead of OCR + regex.** The original plan for this prototype was a
-  local Tesseract-OCR + regex pipeline (`pytesseract`/`opencv-python-headless`, since removed from
-  [requirements.txt](requirements.txt)) as the primary extraction path, with a vision-LLM call as a
-  fallback for labels the local OCR handled poorly. In practice, local OCR accuracy degraded
-  sharply on anything less than a perfectly flat, well-lit label photo, and hand-written regexes
-  for field extraction were brittle against the kind of formatting variation (line breaks,
-  spacing, font choices) real label photos have — so the "fallback" path ended up being needed for
-  most real-world images, not just edge cases. Given that, the local OCR step was dropped
-  entirely in favor of always using the vision-capable LLM
+- **Vision LLM extraction instead of OCR + regex.** OCR + regex was the original plan, with the
+  LLM call intended only as a fallback for hard-to-read labels — but local OCR accuracy degraded
+  sharply on anything less than a perfectly flat, well-lit photo, and hand-written regexes were
+  brittle against real-world formatting variation. Since the "fallback" ended up handling most
+  real images anyway, the OCR path (`pytesseract`/`opencv-python-headless`, since removed from
+  [requirements.txt](requirements.txt)) was dropped in favor of always using the vision-capable LLM
   ([app/integrations/llm.py](app/integrations/llm.py)), which reads the label image directly and
   returns structured JSON for each required field, plus a small set of visual attributes
   (case-exactness and boldness for the government warning). This avoids maintaining two parallel
