@@ -218,6 +218,16 @@ that are reasonable to defer for a prototype but should be addressed before any 
   front and back images; today the app only accepts one photo per case, so a label that needs two
   shots to cover all seven fields isn't fully supported. Adding multi-image upload per case, with
   the vision-LLM call reading both images together, would close this gap.
+- **Revisit local OCR + pattern matching as a fast/cheap first pass, with LLM fallback.** The
+  earlier local-OCR-first approach was dropped because it performed poorly across the board (see
+  "Approach" above), but a well-tuned version of that idea is still worth revisiting: run local
+  OCR + pattern matching first, use a confidence signal to decide whether the result is trustworthy,
+  and only fall back to the vision-LLM call for labels the local pass can't handle well. Since a
+  clean, well-lit label photo doesn't strictly need a vision model to read, this could cut both
+  average latency and per-verification LLM cost for the common case, while keeping the vision-LLM
+  path for the labels that actually need it. This would need real accuracy data on what fraction of
+  real-world label photos a tuned local pipeline can confidently handle before it's worth the added
+  complexity of maintaining two extraction paths.
 - **Image preprocessing for poor-quality photos.** Off-angle shots and glare are currently handled
   only as well as the vision model handles them natively — there's no deskew/glare-correction
   step. A dedicated preprocessing pass (or a "retake photo" quality check before submission) would
